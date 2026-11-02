@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0f2a">
+<title>Signalbound Phone</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#0b0f2a;--top:#2a54c8;--bot:#0e2070;--ink:#fff;--dim:#b9c4ee;--yel:#ffd84a;--bad:#ff6b5a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif}
+body{display:flex;align-items:center;justify-content:center;overscroll-behavior:none}
+.win{width:min(92vw,360px);background:linear-gradient(var(--top),var(--bot));border:2px solid var(--ink);outline:2px solid #000;border-radius:6px;padding:16px}
+h1{font-size:20px;letter-spacing:2px;margin:0 0 8px;color:var(--yel)}
+p{margin:0 0 12px}.dim{color:var(--dim);font-size:14px}.err{color:var(--bad);min-height:22px;margin:8px 0 0;font-size:14px}
+button{width:100%;min-height:48px;background:var(--yel);color:#0b0f2a;border:0;border-radius:5px;font-size:16px;font-weight:600;margin-top:8px}
+button.alt{background:#132a86;color:var(--ink);border:2px solid var(--ink)}
+input{width:100%;min-height:48px;padding:8px;border-radius:4px;border:1px solid var(--dim);background:#0b1440;color:var(--ink);font-size:24px;letter-spacing:6px;text-align:center}
+#screen{display:none;touch-action:none;image-rendering:pixelated;background:#000;width:min(100vw,75vh);height:auto;aspect-ratio:3/4}
+.hide{display:none}
+#fps{position:fixed;left:4px;bottom:2px;font-size:11px;color:var(--dim)}
+</style></head><body>
+<section class="win" id="connect">
+<h1>SIGNALBOUND</h1>
+<p>Play your board on this phone. On the board, open SETTINGS &gt; PHONE LINK &gt; START.</p>
+<button id="go">CONNECT</button>
+<p class="err" id="err1"></p>
+<p class="dim">Needs Chrome on Android. Nothing is stored here: the game stays on the board.</p>
+</section>
+<section class="win hide" id="pair">
+<h1>PAIRING CODE</h1>
+<p>Type the six digits on the board's screen.</p>
+<input id="code" inputmode="numeric" maxlength="6" autocomplete="off">
+<button id="send">PLAY</button>
+<p class="err" id="err2"></p>
+</section>
+<canvas id="screen" width="240" height="320"></canvas>
+<div id="fps"></div>
+<script src="app.js"></script>
+</body></html>
