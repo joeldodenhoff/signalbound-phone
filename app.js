@@ -151,15 +151,28 @@ async function recover() {
     $("err1").textContent="Could not reconnect. Keep the board nearby and tap CONNECT.";
   }finally{reconnecting=false;}
 }
-async function connect() {
+async function connect(forceNew=false) {
   $("err1").textContent="";
   if(reconnecting)return;
   if(!navigator.bluetooth){$("err1").textContent="Open this page in Chrome on Android for Bluetooth phone play.";return;}
   try{
-    if(device && lastCode){clearLink();await attach(true);return;}
+    if(forceNew){lastCode="";if(device){device.removeEventListener("gattserverdisconnected",onGone);if(device.gatt.connected)device.gatt.disconnect();}device=null;clearLink();}
+    if(device){clearLink();await attach(!!lastCode);return;}
+    // A new document has lost its JS BluetoothDevice, but Chrome still knows
+    // the user's grant. Reuse it instead of requiring fresh advertisements.
+    if(!forceNew && !device && navigator.bluetooth.getDevices){
+      try{
+        const granted=await navigator.bluetooth.getDevices();let remembered="";
+        try{remembered=localStorage.getItem("sbPhoneBoard")||"";}catch(e){}
+        const candidates=granted.filter(d=>d.name==="Signalbound");
+        device=granted.find(d=>d.id===remembered)||(candidates.length===1?candidates[0]:null);
+        if(device){device.addEventListener("gattserverdisconnected",onGone);clearLink();await attach(false);return;}
+      }catch(e){clearLink();device=null;}
+    }
     if(device)device.removeEventListener("gattserverdisconnected",onGone);
     device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
     device.addEventListener("gattserverdisconnected",onGone);
+    try{localStorage.setItem("sbPhoneBoard",device.id);}catch(e){}
     clearLink();await attach(false);
   }catch(e){if(e.name!=="NotFoundError")$("err1").textContent="Couldn't connect: "+e.message;}
 }
@@ -181,7 +194,13 @@ function sendCode() {
   send(msg);
 }
 
-$("go").addEventListener("click", connect);
+$("go").addEventListener("click",()=>connect(false));
+$("choose").addEventListener("click",()=>connect(true));
+// Closing/reloading should release GATT immediately. The firmware heartbeat
+// lease also frees it if Android kills the document without this callback.
+globalThis.addEventListener?.("pagehide",()=>{
+  lastCode="";if(device){device.removeEventListener("gattserverdisconnected",onGone);if(device.gatt.connected)device.gatt.disconnect();}clearLink();
+});
 $("send").addEventListener("click", sendCode);
 $("code").addEventListener("keydown", ev => { if (ev.key === "Enter") sendCode(); });
 requestAnimationFrame(paint);

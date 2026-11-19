@@ -1,7 +1,7 @@
 // Keeps the page working with no signal: the network first, this copy when
 // there is none. Nothing but the page's own files is stored.
 "use strict";
-const CACHE = "signalbound-phone-20261119";
+const CACHE = "signalbound-phone-20261119-reopen";
 const FILES = ["./", "index.html", "app.js", "manifest.json", "icon.svg"];
 self.addEventListener("install", ev => ev.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener("activate", ev => ev.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("signalbound-phone") && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
