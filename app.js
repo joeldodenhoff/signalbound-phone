@@ -6,8 +6,8 @@ const SERVICE = "a7d1f0b0-5b3e-4c1a-9d2e-53424e444c00";
 const PICTURE = "a7d1f0b0-5b3e-4c1a-9d2e-53424e444c01";
 const INPUT_C = "a7d1f0b0-5b3e-4c1a-9d2e-53424e444c02";
 const W = 240, H = 320;
-const IN_CODE = 1, IN_TOUCH = 2, IN_RESEND = 3;
-const ST_OK = 1, ST_BAD_CODE = 2;
+const IN_CODE = 1, IN_TOUCH = 2, IN_RESEND = 3, IN_PING = 4;
+const ST_OK = 1, ST_BAD_CODE = 2, ST_ALIVE = 3;
 
 // RGB332 as the board's panel shows it (TFT_eSPI's color8to16).
 const BLUE = [0, 82, 173, 255];
@@ -57,7 +57,8 @@ function paint() {
   requestAnimationFrame(paint);
 }
 
-let device = null, input = null, wake = null;
+let device = null, input = null, wake = null, picture = null;
+let linkGeneration = 0, reconnecting = false, lastCode = "", lastPacketAt = 0;
 
 // Writes one at a time (Chrome refuses overlapping ones). A finger's newer
 // position replaces one still waiting, so a drag can't fall behind.
@@ -65,15 +66,17 @@ let writing = false, queued = [], moveWaiting = null;
 async function pump() {
   if (writing || !input) return;
   writing = true;
+  const generation=linkGeneration, target=input;
   try {
     for (;;) {
+      if(generation!==linkGeneration || target!==input)break;
       const next = queued.shift() || moveWaiting;
       if (!next) break;
       if (next === moveWaiting) moveWaiting = null;
-      await input.writeValueWithoutResponse(next);
+      await target.writeValueWithoutResponse(next);
     }
-  } catch (e) { queued = []; moveWaiting = null; }
-  writing = false;
+  } catch (e) { if(generation===linkGeneration){queued=[];moveWaiting=null;} }
+  if(generation===linkGeneration)writing = false;
 }
 function send(bytes) { queued.push(bytes); pump(); }
 
@@ -100,53 +103,78 @@ async function keepAwake() {
   try { if ("wakeLock" in navigator) wake = await navigator.wakeLock.request("screen"); } catch (e) {}
 }
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && canvas.style.display === "block") {
-    keepAwake();
-    // Android may have held notifications back. The board resends all but black.
-    if (input) { pixels.fill(0xff000000); dirtyTop = 0; dirtyBottom = H - 1; send(new Uint8Array([IN_RESEND])); }
-  }
+  if(document.visibilityState!=="visible")return;
+  if(input && device?.gatt.connected && canvas.style.display==="block"){
+    keepAwake();send(new Uint8Array([IN_RESEND]));
+  }else if(device && lastCode)recover();
 });
 
 function onPacket(ev) {
+  lastPacketAt=Date.now();
   const v = ev.target.value;
   const st = applyPacket(new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
   if (st === ST_OK) { pixels.fill(0xff000000); dirtyTop = 0; dirtyBottom = H - 1; show("screen"); keepAwake(); }
-  else if (st === ST_BAD_CODE) { $("err2").textContent = "That code didn't match. Check the board's screen."; $("code").value = ""; }
+  else if (st === ST_BAD_CODE) { lastCode="";show("pair");$("err2").textContent = "That code didn't match. Check the board's screen."; $("code").value = ""; }
 }
 
+function clearLink() {
+  linkGeneration++; input=null;writing=false;queued=[];moveWaiting=null;fingerDown=false;
+  if(picture){picture.removeEventListener("characteristicvaluechanged",onPacket);picture=null;}
+  if(wake){wake.release().catch(()=>{});wake=null;}
+}
 function onGone() {
-  input = null;
-  writing = false; queued = []; moveWaiting = null; fingerDown = false;
-  if (wake) { wake.release().catch(() => {}); wake = null; }
-  $("err1").textContent = "The board disconnected. Tap CONNECT to go again.";
-  show("connect");
+  clearLink();show("connect");
+  $("err1").textContent="Connection interrupted. Reconnecting to your board…";
+  if(lastCode && document.visibilityState==="visible")recover();
+  else $("err1").textContent="The board disconnected. Tap CONNECT to reconnect.";
 }
-
-async function connect() {
-  $("err1").textContent = "";
-  if (!navigator.bluetooth) { $("err1").textContent = "This browser has no Bluetooth for web pages. Open this page in Chrome on Android."; return; }
+async function attach(resume) {
+  const selected=device;
+  const server=await selected.gatt.connect();
+  const service=await server.getPrimaryService(SERVICE);
+  picture=await service.getCharacteristic(PICTURE);
+  input=await service.getCharacteristic(INPUT_C);
+  picture.addEventListener("characteristicvaluechanged",onPacket);
+  await picture.startNotifications();lastPacketAt=Date.now();
+  if(resume && lastCode){$("code").value=lastCode;sendCode();}
+  else {$("err2").textContent="";$("code").value="";show("pair");$("code").focus();}
+}
+async function recover() {
+  if(reconnecting || !device || !lastCode || document.visibilityState!=="visible")return;
+  reconnecting=true;
   try {
-    device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SERVICE] }] });
-    device.addEventListener("gattserverdisconnected", onGone);
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE);
-    const picture = await service.getCharacteristic(PICTURE);
-    input = await service.getCharacteristic(INPUT_C);
-    picture.addEventListener("characteristicvaluechanged", onPacket);
-    await picture.startNotifications();
-    $("err2").textContent = "";
-    $("code").value = "";
-    show("pair");
-    $("code").focus();
-  } catch (e) {
-    if (e.name !== "NotFoundError") $("err1").textContent = "Couldn't connect: " + e.message;   // NotFoundError: the chooser was cancelled
-  }
+    for(let attempt=0;attempt<3;attempt++){
+      await new Promise(resolve=>setTimeout(resolve,1000*(1<<attempt)));
+      if(document.visibilityState!=="visible")break;
+      try{await attach(true);return;}catch(e){clearLink();}
+    }
+    $("err1").textContent="Could not reconnect. Keep the board nearby and tap CONNECT.";
+  }finally{reconnecting=false;}
 }
+async function connect() {
+  $("err1").textContent="";
+  if(reconnecting)return;
+  if(!navigator.bluetooth){$("err1").textContent="Open this page in Chrome on Android for Bluetooth phone play.";return;}
+  try{
+    if(device && lastCode){clearLink();await attach(true);return;}
+    if(device)device.removeEventListener("gattserverdisconnected",onGone);
+    device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}]});
+    device.addEventListener("gattserverdisconnected",onGone);
+    clearLink();await attach(false);
+  }catch(e){if(e.name!=="NotFoundError")$("err1").textContent="Couldn't connect: "+e.message;}
+}
+// A small heartbeat distinguishes a quiet screen from a stalled connection.
+setInterval(()=>{
+  if(document.visibilityState!=="visible" || canvas.style.display!=="block" || !input)return;
+  if(Date.now()-lastPacketAt>20000){if(device?.gatt.connected)device.gatt.disconnect();else onGone();return;}
+  send(new Uint8Array([IN_PING]));
+},5000);
 
 function sendCode() {
   const code = $("code").value.trim();
   if (!/^\d{6}$/.test(code)) { $("err2").textContent = "The code is six digits."; return; }
   $("err2").textContent = "";
+  lastCode=code;
   const msg = new Uint8Array(7);
   msg[0] = IN_CODE;
   for (let i = 0; i < 6; i++) msg[i + 1] = code.charCodeAt(i);
