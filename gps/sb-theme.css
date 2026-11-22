@@ -1,0 +1,76 @@
+/* Signalbound's look for its PC and phone pages: the board's current
+   screens (deep navy, charcoal panels in brass frames, warm wood buttons,
+   cream text, gold titles, Kenney pixel fonts). Copied beside each page by
+   tools/web_art/make_web_art.py: edit it there, not the copies. */
+@font-face { font-family: "SB Pixel"; src: url(fonts/KenneyPixel.ttf) format("truetype"); font-display: swap; }
+@font-face { font-family: "SB Mini"; src: url(fonts/KenneyMini.ttf) format("truetype"); font-display: swap; }
+:root {
+  --page: #081421; --page2: #0d1b2c; --panel: #212429; --panel2: #1a1d22; --inner: #393029;
+  --edge: #8c794a; --edge-hi: #c6b273; --btn: #423831; --btn-hi: #574a3d; --wood: #423010;
+  --ink: #f7ebce; --dim: #adbac6; --gold: #f7c35a; --good: #5ae37b; --blue: #5ab6ff; --bad: #ff7a64; --warn: #f7a35a;
+  --weak: #5a6a86;
+  --pixel: "SB Pixel", "SB Mini", monospace; --mini: "SB Mini", "SB Pixel", monospace;
+  --text: system-ui, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--page); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.5 var(--text); }
+a { color: var(--gold); text-underline-offset: 3px; }
+h1, h2, h3 { font-family: var(--pixel); font-weight: normal; color: var(--gold); letter-spacing: .02em; line-height: 1.1; }
+h1 { font-size: 40px; margin: 0; text-shadow: 2px 2px 0 #000; }
+h2 { font-size: 26px; margin: 0 0 10px; text-shadow: 2px 2px 0 #000; }
+h3 { font-size: 20px; margin: 0 0 6px; color: var(--ink); }
+.eyebrow, .label { font-family: var(--mini); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--edge-hi); }
+
+/* A framed panel, like the board's windows: black outline, brass frame,
+   a dark inner bevel, brass studs in the top corners. */
+.win { position: relative; background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 2px solid var(--edge);
+  box-shadow: 0 0 0 2px #000, inset 0 0 0 2px var(--inner); border-radius: 2px; padding: 16px; margin: 0 0 16px; }
+.win::before, .win::after { content: ""; position: absolute; top: 4px; left: 4px; width: 4px; height: 4px; background: var(--edge-hi); box-shadow: 0 0 0 1px #000; }
+.win::after { left: auto; right: 4px; }
+
+/* The scene at the top of a page: the pixel art, a title over it. */
+.hero { position: relative; border: 2px solid var(--edge); box-shadow: 0 0 0 2px #000; margin: 0 0 16px; overflow: hidden; background: #000; }
+.hero img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.hero .over { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 12px; background: linear-gradient(transparent, rgba(5, 10, 22, .92)); }
+.hero .over p { margin: 4px 0 0; color: var(--ink); font-size: 15px; text-shadow: 1px 1px 0 #000; }
+
+/* Buttons: warm wood in a brass frame; the main one is gold. */
+button, .button { font-family: var(--pixel); font-size: 22px; line-height: 1; letter-spacing: .03em; color: var(--ink);
+  background: linear-gradient(180deg, var(--btn-hi), var(--btn)); border: 2px solid var(--edge); border-radius: 2px;
+  box-shadow: 0 0 0 2px #000, inset 0 1px 0 rgba(255, 255, 255, .08); padding: 11px 16px 13px; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+button:hover, .button:hover { border-color: var(--edge-hi); }
+button:active { transform: translateY(1px); }
+button.main, .button.main { background: linear-gradient(180deg, #ffd77a, #d9a443); color: #20160a; border-color: #ffe7a6; text-shadow: none; }
+button:disabled { opacity: .4; cursor: default; }
+button.small { font-size: 18px; padding: 7px 10px 9px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+input[type=text], input:not([type]), select, textarea { font: 16px var(--text); color: var(--ink); background: #0b1626; border: 2px solid var(--inner);
+  box-shadow: 0 0 0 1px var(--edge); border-radius: 2px; padding: 9px 10px; min-width: 0; }
+input[type=checkbox] { accent-color: var(--gold); width: 18px; height: 18px; }
+progress { width: 100%; height: 12px; accent-color: var(--gold); }
+
+/* Status lines and meters. */
+.say { margin-top: 10px; padding: 10px 12px; background: #0b1626; border-left: 3px solid var(--edge); }
+.say.good { border-color: var(--good); } .say.warn { border-color: var(--warn); } .say.bad { border-color: var(--bad); }
+.good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+.dim { color: var(--dim); font-size: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: #0b1626; border: 1px solid var(--inner); padding: 6px 8px 8px; }
+.tile .k { font-family: var(--mini); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.tile .v { font-family: var(--pixel); font-size: 34px; line-height: 1; color: var(--ink); }
+.tile .v.good { color: var(--good); } .tile .v.warn { color: var(--warn); } .tile .v.bad { color: var(--bad); }
+.meter { height: 10px; background: #0b1626; border: 1px solid #000; box-shadow: 0 0 0 1px var(--inner); }
+.meter > i { display: block; height: 100%; background: var(--weak); }
+.meter > i.good { background: var(--good); } .meter > i.warn { background: var(--warn); }
+
+pre, .log { font: 12px/1.45 var(--mono); color: #c9d4c4; background: #050b14; border: 1px solid var(--inner); padding: 8px; white-space: pre-wrap; word-break: break-all; overflow: auto; }
+details summary { cursor: pointer; font-family: var(--pixel); font-size: 20px; color: var(--gold); }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 4px; text-align: left; border-bottom: 1px solid var(--inner); }
+th { font-family: var(--mini); font-weight: normal; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.hidden { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }

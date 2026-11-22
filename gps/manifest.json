@@ -1,0 +1,11 @@
+{
+  "name": "Signalbound GPS Test",
+  "short_name": "GPS Test",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#081421",
+  "theme_color": "#081421",
+  "icons": [{ "src": "art/icon-192.png", "sizes": "192x192", "type": "image/png" }, { "src": "art/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}

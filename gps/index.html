@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#081421">
+<title>Signalbound GPS Test</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="art/icon-192.png">
+<link rel="stylesheet" href="sb-theme.css">
+<style>
+body { padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto; }
+button { width: 100%; margin-top: 10px; }
+.row { display: flex; gap: 10px; } .row > * { flex: 1; }
+label.field { display: block; } label.field input { width: 100%; margin-top: 4px; }
+ol { margin: 6px 0 0; padding-left: 22px; } li { margin: 5px 0; }
+.clock { font-family: var(--pixel); font-size: 72px; line-height: 1; text-align: center; color: var(--gold); text-shadow: 3px 3px 0 #000; margin: 8px 0 2px; }
+.sat { display: grid; grid-template-columns: 70px 30px 1fr 26px; gap: 8px; align-items: center; font-size: 14px; margin: 3px 0; font-variant-numeric: tabular-nums; }
+.sat span:first-child { font-family: var(--mini); font-size: 12px; color: var(--dim); }
+#sky { display: block; width: 100%; max-width: 300px; margin: 0 auto; }
+td.best { color: var(--good); font-weight: 700; }
+.verdict-big { font-family: var(--pixel); font-size: 26px; color: var(--good); line-height: 1.1; }
+.log { max-height: 240px; margin-top: 10px; }
+.logbar { display: flex; gap: 8px; margin-top: 8px; } .logbar button { margin: 0; }
+footer { color: var(--dim); font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header style="margin: 6px 2px 16px">
+  <div class="eyebrow">Signalbound</div>
+  <h1>GPS Test</h1>
+  <p class="dim" style="margin:4px 0 0">Which antenna spot hears the sky best?</p>
+</header>
+
+<section class="win" id="connectWin">
+  <div class="eyebrow">Step 1</div>
+  <h2>Connect the board</h2>
+  <ol>
+    <li>Plug the board into the phone with the USB-C cable.</li>
+    <li>Tap <b>Connect</b>, then pick the board in the list (it may be called "USB JTAG/serial debug unit" or "Espressif").</li>
+  </ol>
+  <button class="main" id="conBtn">Connect</button>
+  <div class="say" id="conSay">Not connected.</div>
+</section>
+
+<section class="win hidden" id="liveWin">
+  <div class="eyebrow">Right now</div>
+  <h2>What the GPS hears</h2>
+  <div class="tiles">
+    <div class="tile"><div class="k">Fix</div><div class="v" id="tFix">-</div></div>
+    <div class="tile"><div class="k">In view</div><div class="v" id="tView">-</div></div>
+    <div class="tile"><div class="k">Heard</div><div class="v" id="tHeard">-</div></div>
+    <div class="tile"><div class="k">Strong</div><div class="v" id="tStrong">-</div></div>
+    <div class="tile"><div class="k">Used</div><div class="v" id="tUsed">-</div></div>
+    <div class="tile"><div class="k">Best</div><div class="v" id="tBest">-</div></div>
+  </div>
+  <div class="say" id="verdict">Waiting for the GPS.</div>
+</section>
+
+<section class="win hidden" id="testWin">
+  <div class="eyebrow" id="stepEyebrow">Step 2</div>
+  <h2 id="stepTitle">The test</h2>
+  <div id="stepBody"></div>
+  <div class="clock hidden" id="clock"></div>
+  <div class="dim hidden" id="clockNote" style="text-align:center"></div>
+  <button class="main" id="stepBtn">Start</button>
+  <button id="skipBtn" class="hidden">End this part now</button>
+</section>
+
+<section class="win hidden" id="resultWin">
+  <div class="eyebrow">The verdict</div>
+  <h2>Results</h2>
+  <div id="resultBody"></div>
+  <button class="main" id="shareBtn">Send the results</button>
+  <button id="saveBtn">Save the results to the phone</button>
+  <button id="againBtn">Start a new test</button>
+</section>
+
+<section class="win hidden" id="skyWin">
+  <div class="eyebrow">Overhead</div>
+  <h2>The sky</h2>
+  <svg id="sky" viewBox="-112 -112 224 224" role="img" aria-label="Where each satellite is"></svg>
+  <p class="dim">The center is straight up, the edge is the horizon, north at the top (as the GPS sees it). Green: strong. Orange: weak. Grey: listed, not heard.</p>
+  <div id="sats"></div>
+</section>
+
+<section class="win hidden" id="logWin">
+  <details id="logDetails"><summary>Board messages</summary>
+    <div class="log" id="log"></div>
+  </details>
+  <div class="logbar">
+    <button class="small" id="logSaveBtn">Save as .log</button>
+    <button class="small" id="logShareBtn">Send .log</button>
+  </div>
+  <p class="dim" id="logCount">Everything the board says while connected is kept until you start a new test.</p>
+</section>
+
+<footer>This page only listens to the board and sends it its own GPS check commands. Nothing leaves the phone unless you tap Send. Works with no signal once it has been opened on Wi-Fi.</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
