@@ -1,26 +1,28 @@
-# Signalbound Phone
+# Signalbound Phone and Diagnostic Check
 
-A web page that shows a Signalbound board's screen on an Android phone over
-Bluetooth, and sends taps back: https://joeldodenhoff.github.io/signalbound-phone/
+The complete HTTPS site is https://joeldodenhoff.github.io/signalbound-phone/.
+Use Chrome on Android. The site needs all of its JavaScript, stylesheet, icon,
+font, and offline-worker files; one downloaded HTML file is insufficient.
 
-The game and saves stay on the board. The page caches its own files for offline
-use. An optional GPS walk recorder holds diagnostic samples in page memory and
-downloads them as JSON when STOP AND SAVE LOG is pressed. Save before closing.
+For normal play: Settings > Phone Link > Start on the board, then Connect to Play
+on the phone. Select Signalbound and enter the six-digit code shown on the board.
 
-**To use it:** on the board, SETTINGS > PHONE LINK > START. Open the page in
-Chrome on Android, tap CONNECT, pick Signalbound, and type the code the board
-shows.
+For a diagnostic walk: Settings > Diagnostic Check > Start on the board, then
+Connect for a Diagnostic Check on the phone. This records GPS and system health
+without mirroring pictures or sending game taps. It replaces a regular Phone Link
+session; the two modes do not run as simultaneous clients.
 
-With the matching GPS walk firmware, open GPS WALK DIAGNOSTICS and press
-START WALK LOG. It records satellite counts, signal strength, HDOP, position
-age and UART overflow events every two seconds, without coordinates. Keep
-Chrome open and the phone unlocked. Reconnection requests diagnostics again;
-gaps in the log indicate missing Bluetooth reports, not necessarily GPS loss.
-Phone-supplied and bench positions are explicitly marked. Counters saturate
-at 65,535; up to 18,000 samples (about ten hours) are retained. A page reload
-loses unsaved samples. No diagnostics are uploaded automatically to ChatGPT.
+Keep the page open and phone unlocked. Recording starts after authentication.
+Reconnect preserves the in-memory log; an explicit stop stays stopped. Use Stop
+and Save Report before closing or reloading. Reports contain GPS quality and
+receiver-configuration counters, memory/timing, Wi-Fi health, SD/art readiness,
+battery where available, and available crash information. Automatic telemetry
+excludes coordinates, SSIDs, MAC addresses, passwords and pairing codes. Optional
+notes are included only when you type them. Nothing is uploaded automatically.
+Send the saved JSON report to the assistant for analysis. A Bluetooth gap is not
+proof of a GPS failure. Android background recording is not guaranteed.
 
-The link is not encrypted: someone nearby with Bluetooth gear could read the
-screen. Stop PHONE LINK when you aren't using it.
+The game and saves remain on the board. Normal mirrored frames can show nearby
+addresses; the current link is not encrypted. Stop the connection when finished.
 
 License: GPL-3.0.
