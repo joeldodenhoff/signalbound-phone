@@ -1,41 +1,33 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#0b0f2a">
-<title>Signalbound Phone</title>
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<style>
-:root{--bg:#0b0f2a;--top:#2a54c8;--bot:#0e2070;--ink:#fff;--dim:#b9c4ee;--yel:#ffd84a;--bad:#ff6b5a}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif}
-body{display:flex;align-items:center;justify-content:center;overscroll-behavior:none}
-.win{width:min(92vw,360px);background:linear-gradient(var(--top),var(--bot));border:2px solid var(--ink);outline:2px solid #000;border-radius:6px;padding:16px}
-h1{font-size:20px;letter-spacing:2px;margin:0 0 8px;color:var(--yel)}
-p{margin:0 0 12px}.dim{color:var(--dim);font-size:14px}.err{color:var(--bad);min-height:22px;margin:8px 0 0;font-size:14px}
-button{width:100%;min-height:48px;background:var(--yel);color:#0b0f2a;border:0;border-radius:5px;font-size:16px;font-weight:600;margin-top:8px}
-button.alt{background:#132a86;color:var(--ink);border:2px solid var(--ink)}
-input{width:100%;min-height:48px;padding:8px;border-radius:4px;border:1px solid var(--dim);background:#0b1440;color:var(--ink);font-size:24px;letter-spacing:6px;text-align:center}
-#screen{display:none;touch-action:none;image-rendering:pixelated;background:#000;width:min(100vw,75vh);height:auto;aspect-ratio:3/4}
-.hide{display:none}
-#fps{position:fixed;left:4px;bottom:2px;font-size:11px;color:var(--dim)}
-</style></head><body>
-<section class="win" id="connect">
-<h1>SIGNALBOUND</h1>
-<p>Play your board on this phone. On the board, open SETTINGS &gt; PHONE LINK &gt; START.</p>
-<button id="go">CONNECT</button>
-<button class="alt" id="choose">CHOOSE ANOTHER BOARD</button>
-<p class="err" id="err1"></p>
-<p class="dim">Needs Chrome on Android. Only your board shortcut is remembered here. The game stays on the board.</p>
-</section>
-<section class="win hide" id="pair">
-<h1>PAIRING CODE</h1>
-<p>Type the six digits on the board's screen.</p>
-<input id="code" inputmode="numeric" maxlength="6" autocomplete="off">
-<button id="send">PLAY</button>
-<p class="err" id="err2"></p>
-</section>
-<canvas id="screen" width="240" height="320"></canvas>
-<div id="fps"></div>
-<script src="app.js"></script>
-</body></html>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#102329">
+<meta name="description" content="Your Signalbound companion. Play from your Freenove and record a GPS walk from your phone.">
+<title>Signalbound · Wayfarer's Companion</title>
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+</head><body><div class="app-shell">
+<header class="masthead"><img src="assets/sigil.svg" width="40" height="40" alt=""><div><p class="brand">SIGNALBOUND</p><p class="edition">WAYFARER'S COMPANION</p></div><span class="board-tag">FREENOVE</span></header>
+<main>
+<section class="panel welcome" id="connect" aria-labelledby="welcome-title">
+<p class="eyebrow">YOUR ADVENTURE, WITHIN REACH</p><h1 id="welcome-title">Carry the journey.</h1>
+<p class="intro">Your phone becomes a window into Signalbound. Your character, discoveries, and saved game stay on the Freenove.</p>
+<div class="instructions"><h2>Before you connect</h2><ol><li>Turn on Bluetooth on your Android phone.</li><li>On the board, open <strong>Settings · Phone Link · Start</strong>.</li><li>Connect below, then enter the code shown on the board.</li></ol></div>
+<button id="go" class="primary">CONNECT TO PLAY</button><button class="alt" id="choose">CHOOSE ANOTHER BOARD</button>
+<button class="alt" id="diagnostic-connect">CONNECT FOR A DIAGNOSTIC CHECK</button>
+<p class="footnote">For a report, start <strong>Settings · Diagnostic Check</strong> on the board first. Phone Link is for playing.</p>
+<p class="err" id="err1" role="alert"></p><p class="footnote">Use Chrome on Android. This page remembers your board shortcut for next time.</p></section>
+<section class="panel pairing hide" id="pair" aria-labelledby="pair-title">
+<p class="eyebrow">A LINK BETWEEN WORLDS</p><h1 id="pair-title">Open the connection.</h1>
+<label for="code">Enter the six-digit code on your board.</label><input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" aria-describedby="err2" placeholder="· · · · · ·">
+<button id="send" class="primary">CONTINUE THE JOURNEY</button><p class="err" id="err2" role="alert"></p><p class="footnote">The code is shown in Phone Link on your Freenove.</p></section>
+<section id="play-shell" class="play-layout hide" aria-label="Board screen and walk tools">
+<div class="board-view" id="board-view"><div class="screen-frame"><canvas id="screen" width="240" height="320" aria-label="Signalbound board screen"></canvas></div><p class="screen-caption">Your Freenove's live screen · touch to play</p></div>
+<details id="gps-tools" class="panel hide"><summary><span id="diagnostic-title">GPS walk diagnostics</span><span class="summary-note">SIGNAL FIELD NOTES</span></summary><div class="diagnostic-body">
+<p>See what your GPS receiver hears as you walk. Record a field log to review afterward.</p><p id="gps-report" class="readings" role="status" aria-live="polite">Connect and enter the board's code first.</p>
+<p id="system-report" class="readings hide" role="status" aria-live="polite"></p>
+<label for="report-notes">What did you notice? <span class="footnote">Optional</span></label><textarea id="report-notes" maxlength="2000" rows="3" placeholder="For example: the screen paused after opening the map."></textarea>
+<button id="gps-start" class="primary">START WALK LOG</button><button id="gps-save" class="alt">STOP AND SAVE LOG</button>
+<ul class="field-notes"><li>Keep this page open and your phone unlocked.</li><li>The log contains signal readings, without coordinates.</li><li>A Bluetooth interruption does not mean GPS reception was lost.</li></ul>
+<p class="footnote">This page does not request your phone's location. A Diagnostic Check also records system health and available crash details. Save the report and send it to ChatGPT; it is not uploaded automatically.</p></div></details></section>
+</main><footer><span class="footer-rule"></span><p>THE WORLD IS FULL OF SIGNALS.</p><span class="footer-rule"></span></footer><div id="fps" aria-hidden="true"></div>
+</div><script src="app.js"></script></body></html>

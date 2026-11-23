@@ -8,6 +8,32 @@ const INPUT_C = "a7d1f0b0-5b3e-4c1a-9d2e-53424e444c02";
 const W = 240, H = 320;
 const IN_CODE = 1, IN_TOUCH = 2, IN_RESEND = 3, IN_PING = 4;
 const ST_OK = 1, ST_BAD_CODE = 2, ST_ALIVE = 3;
+let gpsRecording=false,gpsRows=[],gpsLastAt=0,gpsTruncated=false;
+let diagnosticMode=false,wantDiagnostic=false,pendingSample=null,latestHealth={},recordingStoppedByUser=false;
+function systemPacket(bytes){
+ if(bytes.length!==20 || bytes[3]!==1)return;
+ const u16=i=>bytes[i]|bytes[i+1]<<8,u32=i=>(bytes[i]|bytes[i+1]<<8|bytes[i+2]<<16|bytes[i+3]<<24)>>>0;
+ const type=bytes[2];let values={};
+ if(type===5)values={screen:bytes[4],resetReason:bytes[5],uptimeMs:u32(6),freeHeap:u32(10),minimumHeap:u32(14),averageFrameMs:u16(18)};
+ else if(type===6)values={wifiConnected:!!(bytes[4]&1),sdReady:!!(bytes[4]&2),artReady:!!(bytes[4]&4),charging:!!(bytes[4]&8),wifiRssi:bytes[5]>127?bytes[5]-256:bytes[5],largestFreeBlock:u32(6),maximumLoopGapMs:u16(10),loopStackFree:u16(12),artCount:u16(14),droppedWardriveRecords:u16(16),batteryPercent:bytes[18]===255?null:bytes[18]};
+ else if(type===7)values={bootId:u32(4).toString(16),firmwareBuild:u32(8).toString(16),uartErrors:u16(12),qualityRejected:u16(14),wifiDisconnects:u16(16),recordedCrashes:u16(18)};
+ else if(type===8)values={previousCrash:!!(bytes[4]&1),coreDumpAvailable:!!(bytes[4]&2),crashDumpFromOlderFirmware:!!(bytes[4]&4),backtraceCount:bytes[5],crashPc:u32(6),crashCause:u32(10),crashAddress:u32(14),crashUptimeSeconds:u16(18)};
+ else if(type===9)values={backtrace:[u32(4),u32(8),u32(12),u32(16)]};
+ else if(type===10)values={receiverVerified:!!(bytes[4]&1),sbasRequested:!!(bytes[4]&2),orbitCacheFresh:!!(bytes[4]&4),motionModelObserved:bytes[5],motionModelRequested:bytes[6],navigationSystems:bytes[7],gpsIntervalMs:u16(8),orbitDownloadState:bytes[10],orbitBytes:u16(11),casicCommandsSent:u16(13),casicCommandsAccepted:u16(15),casicCommandsRejected:u16(17)};
+ else return;
+ latestHealth={...latestHealth,...values};
+ if(gpsRecording && pendingSample){pendingSample.system={...(pendingSample.system||{}),...values};if(type===10)pendingSample.systemComplete=true;}
+ $("system-report").classList.toggle('hide',false);
+ const h=latestHealth,kb=n=>n===undefined?'waiting':(n/1024).toFixed(1)+' KB';
+ $("system-report").textContent=`SYSTEM HEALTH\nFree memory: ${kb(h.freeHeap)} · Lowest: ${kb(h.minimumHeap)}\nLargest block: ${kb(h.largestFreeBlock)}\nAverage frame: ${h.averageFrameMs??'waiting'} ms\nLongest loop gap: ${h.maximumLoopGapMs??'waiting'} ms\nWi-Fi: ${h.wifiConnected===undefined?'waiting':h.wifiConnected?'connected ('+h.wifiRssi+' dBm)':'not connected'}\nSD card: ${h.sdReady===undefined?'waiting':h.sdReady?'ready':'unavailable'}\nArtwork: ${h.artReady===undefined?'waiting':h.artReady?h.artCount+' entries ready':'unavailable'}\nDropped travel records: ${h.droppedWardriveRecords??'waiting'}\nBattery: ${h.batteryPercent==null?'not reported':h.batteryPercent+'%'}\nPrevious crash: ${h.previousCrash===undefined?'waiting':h.previousCrash?'recorded':'none reported'}\nMotion model: ${h.motionModelObserved===255?'unconfirmed':h.motionModelObserved===2?'walking':h.motionModelObserved===3?'driving':h.motionModelObserved??'waiting'}\nSatellite assistance: ${h.orbitCacheFresh?'fresh cache':h.orbitBytes?'cache needs refresh':'not yet available'}`;
+}
+function gpsPacket(bytes){
+ if(bytes.length!==20 || bytes[3]!==1)return;
+ const u16=i=>bytes[i]|bytes[i+1]<<8,flags=bytes[4];gpsLastAt=Date.now();
+ const row={time:new Date().toISOString(),traffic:!!(flags&1),receiverReportsFix:!!(flags&2),usableFix:!!(flags&4),source:flags&16?'bench':flags&8?'phone':'module',listed:bytes[5],heard:bytes[6],used:bytes[7],bestSignal:bytes[8],strongSignals:bytes[9],hdop:u16(10)/100,fixAgeSeconds:u16(12)===65535?null:u16(12)/10,uartOverflows:u16(14),badSentences:u16(16),goodSentences:u16(18)};
+ pendingSample=row;if(gpsRecording){if(gpsRows.length<18000)gpsRows.push(row);else{gpsTruncated=true;pendingSample=null;}}
+ $("gps-report").textContent=`${row.source==='module'?'ATGM336H':row.source+' position — not a module test'}\n${row.usableFix?'Usable fix':row.receiverReportsFix?'Fix reported; quality insufficient or stale':'Searching for a fix'}\nListed: ${row.listed} · Heard: ${row.heard} · Used: ${row.used}\nBest signal: ${row.bestSignal} dB-Hz\nHDOP: ${row.hdop||'unknown'} · Age: ${row.fixAgeSeconds===null?'no fix':row.fixAgeSeconds+' s'}\nUART overflow events: ${row.uartOverflows}\n${gpsRows.length} samples recorded${gpsTruncated?' — log limit reached':''}`;
+}
 
 // RGB332 as the board's panel shows it (TFT_eSPI's color8to16).
 const BLUE = [0, 82, 173, 255];
@@ -30,7 +56,7 @@ let dirtyTop = H, dirtyBottom = -1;
 function applyPacket(bytes) {
   if (bytes.length < 3) return 0;
   const y = bytes[0] | bytes[1] << 8;
-  if (y === 0xFFFF) return bytes[2];
+  if (y === 0xFFFF) {if(bytes[2]===4){gpsPacket(bytes);return 0;}if(bytes[2]>=5 && bytes[2]<=10 && bytes.length===20){systemPacket(bytes);return 0;}return bytes[2];}
   if (y >= H) return 0;
   let x = bytes[2], i = 3;
   const base = y * W;
@@ -79,6 +105,23 @@ async function pump() {
   if(generation===linkGeneration)writing = false;
 }
 function send(bytes) { queued.push(bytes); pump(); }
+$("gps-start").addEventListener("click",()=>{
+ if(!input){$("gps-report").textContent="Connect to your board first.";return;}
+ if(!gpsRecording){gpsRows=[];gpsTruncated=false;}
+ recordingStoppedByUser=false;gpsRecording=true;gpsLastAt=0;send(new Uint8Array([5,1]));
+ $("gps-report").textContent="Waiting for GPS diagnostics. This needs the matching GPS walk firmware.";
+});
+$("gps-save").addEventListener("click",()=>{
+ recordingStoppedByUser=true;gpsRecording=false;pendingSample=null;if(input)send(new Uint8Array([5,0]));
+ const log={format:'signalbound-diagnostic-v2',mode:diagnosticMode?'diagnostic-check':'phone-play-gps',coordinatesIncluded:false,networkIdentifiersIncluded:false,countersSaturateAt:65535,truncated:gpsTruncated,notes:$("report-notes").value.slice(0,2000),samples:gpsRows};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(log,null,2)],{type:'application/json'}));
+ const a=document.createElement('a');a.href=url;a.download='signalbound-diagnostic-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+ $("gps-report").textContent=`Recording stopped. Saved ${gpsRows.length} samples.`;
+});
+setInterval(()=>{
+ if(gpsRecording && (!gpsLastAt || Date.now()-gpsLastAt>7000))$("gps-report").textContent="No recent diagnostic data. Check the Bluetooth connection and matching firmware. This does not establish GPS signal loss.";
+},5000);
+window.addEventListener('beforeunload',ev=>{if(gpsRecording && gpsRows.length){ev.preventDefault();ev.returnValue='Save your GPS walk log before closing.';}});
 
 function fingerMsg(down, ev) {
   const r = canvas.getBoundingClientRect();
@@ -94,6 +137,11 @@ canvas.addEventListener("pointerup", lift);
 canvas.addEventListener("pointercancel", lift);
 
 function show(which) {
+  const active=which==="screen" || which==="diagnostic";
+  $("play-shell").classList.toggle("hide",!active && !gpsRecording && !gpsRows.length);
+  $("play-shell").classList.toggle("diagnostic-only",diagnosticMode);
+  $("board-view").classList.toggle("hide",diagnosticMode);
+  $("gps-tools").classList.toggle("hide",!active && !gpsRecording && !gpsRows.length);
   $("connect").classList.toggle("hide", which !== "connect");
   $("pair").classList.toggle("hide", which !== "pair");
   canvas.style.display = which === "screen" ? "block" : "none";
@@ -104,16 +152,24 @@ async function keepAwake() {
 }
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState!=="visible")return;
-  if(input && device?.gatt.connected && canvas.style.display==="block"){
-    keepAwake();send(new Uint8Array([IN_RESEND]));
+  if(input && device?.gatt.connected && (canvas.style.display==="block" || diagnosticMode)){
+    keepAwake();send(new Uint8Array(diagnosticMode?[5,gpsRecording?1:0]:[IN_RESEND]));
   }else if(device && lastCode)recover();
 });
 
 function onPacket(ev) {
   lastPacketAt=Date.now();
   const v = ev.target.value;
-  const st = applyPacket(new Uint8Array(v.buffer, v.byteOffset, v.byteLength));
-  if (st === ST_OK) { pixels.fill(0xff000000); dirtyTop = 0; dirtyBottom = H - 1; show("screen"); keepAwake(); }
+  const bytes=new Uint8Array(v.buffer,v.byteOffset,v.byteLength),st = applyPacket(bytes);
+  if (st === ST_OK) {
+    diagnosticMode=bytes.length>=4 && bytes[3]===1;pendingSample=null;latestHealth={};
+    $("diagnostic-title").textContent=diagnosticMode?'Diagnostic Check':'GPS walk diagnostics';
+    $("gps-start").textContent=diagnosticMode?'START CHECK':'START WALK LOG';$("gps-save").textContent=diagnosticMode?'STOP AND SAVE REPORT':'STOP AND SAVE LOG';
+    pixels.fill(0xff000000);dirtyTop=0;dirtyBottom=H-1;show(diagnosticMode?'diagnostic':'screen');keepAwake();
+    if(diagnosticMode){$("gps-tools").open=true;if(!recordingStoppedByUser){if(!gpsRecording){gpsRows=[];gpsTruncated=false;}gpsRecording=true;send(new Uint8Array([5,1]));}else send(new Uint8Array([5,0]));}
+    else if(wantDiagnostic){$("gps-tools").open=true;$("gps-report").textContent="The board is in Phone Link mode. Open Settings · Diagnostic Check on the Freenove, start it, then reconnect for a full report.";}
+    else if(gpsRecording)send(new Uint8Array([5,1]));
+  }
   else if (st === ST_BAD_CODE) { lastCode="";show("pair");$("err2").textContent = "That code didn't match. Check the board's screen."; $("code").value = ""; }
 }
 
@@ -178,7 +234,7 @@ async function connect(forceNew=false) {
 }
 // A small heartbeat distinguishes a quiet screen from a stalled connection.
 setInterval(()=>{
-  if(document.visibilityState!=="visible" || canvas.style.display!=="block" || !input)return;
+  if(document.visibilityState!=="visible" || (canvas.style.display!=="block" && !diagnosticMode) || !input)return;
   if(Date.now()-lastPacketAt>20000){if(device?.gatt.connected)device.gatt.disconnect();else onGone();return;}
   send(new Uint8Array([IN_PING]));
 },5000);
@@ -194,7 +250,8 @@ function sendCode() {
   send(msg);
 }
 
-$("go").addEventListener("click",()=>connect(false));
+$("go").addEventListener("click",()=>{wantDiagnostic=false;connect(false);});
+$("diagnostic-connect").addEventListener("click",()=>{wantDiagnostic=true;connect(false);});
 $("choose").addEventListener("click",()=>connect(true));
 // Closing/reloading should release GATT immediately. The firmware heartbeat
 // lease also frees it if Android kills the document without this callback.
