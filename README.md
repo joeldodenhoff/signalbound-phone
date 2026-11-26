@@ -25,4 +25,12 @@ proof of a GPS failure. Android background recording is not guaranteed.
 The game and saves remain on the board. Normal mirrored frames can show nearby
 addresses; the current link is not encrypted. Stop the connection when finished.
 
+Firmware 0x26112524 adds a separate assistance-details packet (type 11, version 1),
+keeping types 4–10 unchanged. Type 10 byte 19 announces that the extra packet is
+expected. The page still completes records from earlier firmware without it.
+Reports include orbit-cache age (seconds, null if unknown), retry delay, refresh
+result, and free/largest INTERNAL memory separately from total heap/PSRAM.
+The board and page explain why a refresh is waiting. A fresh cache can help GPS
+startup; it is neither a measured position nor a guarantee of a fix.
+
 License: GPL-3.0.

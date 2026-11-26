@@ -28,6 +28,10 @@
 <label for="report-notes">What did you notice? <span class="footnote">Optional</span></label><textarea id="report-notes" maxlength="2000" rows="3" placeholder="For example: the screen paused after opening the map."></textarea>
 <button id="gps-start" class="primary">START WALK LOG</button><button id="gps-save" class="alt">STOP AND SAVE LOG</button>
 <ul class="field-notes"><li>Keep this page open and your phone unlocked.</li><li>The log contains signal readings, without coordinates.</li><li>A Bluetooth interruption does not mean GPS reception was lost.</li></ul>
+<p id="link-health" class="footnote" role="status">Connect for live diagnostics. Matching firmware also records Diagnostic Check on the SD card.</p>
+<p id="page-version" class="footnote"></p>
+<label class="footnote">Recover a board diagnostic log <input id="board-log" type="file" accept=".log,.jsonl,text/plain"></label>
+<p class="footnote">Download diagnostic-current.log and diagnostic-previous.log from the board's web file list, or copy them from the SD card. Import either here to recover samples from a Bluetooth interruption. Local logs rotate at roughly 1 MB each.</p>
 <p class="footnote">This page does not request your phone's location. A Diagnostic Check also records system health and available crash details. Save the report and send it to ChatGPT; it is not uploaded automatically.</p></div></details></section>
 </main><footer><span class="footer-rule"></span><p>THE WORLD IS FULL OF SIGNALS.</p><span class="footer-rule"></span></footer><div id="fps" aria-hidden="true"></div>
 </div><script src="app.js"></script></body></html>
